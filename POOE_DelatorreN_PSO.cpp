@@ -8,10 +8,10 @@
 
 using namespace std;
 
-class Particle{
+class           Particle{
 private:
   vector<float> m_v, m_x, m_x_b;
-  float         m_fitness = 1;
+  float         m_fitness, m_pbest = 0.0;
 
 public:
 
@@ -38,43 +38,44 @@ public:
   void          setXB(const vector<float>& _x) { m_x_b = _x; }
   void          log();
   void          evFit();
+  void          evPbest();
+  void          initPbest();
 };
 
 void            simMov(vector<Particle>& x_b_g,float& phi_1,float& phi_2,vector<float>& rand_coods,
                 vector<Particle>& pop,unsigned int& M_pop,unsigned int& dimension);
 vector<float>   randGen(unsigned int& dimension,float& max, float& min,vector<float>& rand_coods);
 float           sphere(vector<float>& x);
-vector<float>   suma(vector<float>&,vector<float>&);
-vector<float>   resta(vector<float>&,vector<float>&);
-vector<float>   product(vector<float>& u, vector<float>& v);
+vector<float>   suma(const vector<float>& u,const vector<float>& v);
+vector<float>   resta(const vector<float>& u,const vector<float>& v);
+vector<float>   product(const vector<float>& u,const vector<float>& v);
 void            sortBuble(unsigned int& M_pop,vector<Particle>& pop);
 void            initSwarm(unsigned int& M_pop,unsigned int& dimension,
                 float& min,float& max,vector<float>& rand_coods,vector<Particle>& pop);
 float           zero = 0.0;
 
-int main() {
+int             main() {
   float            min = -10, max = 10;
   unsigned int     dimension = 2, M_pop = 10, N=2, count=0;
-  float            phi_1 = 2.2, phi_2 = 2.0;
-  vector<Particle> pop, x_b_g, U;
+  float            phi_1 = 2.0, phi_2 = 2.0;
+  vector<Particle> pop, x_b_g;
   vector<float>    rand_coods;
 
   initSwarm(M_pop,dimension,min,max,rand_coods,pop);
   ofstream         fout;
   while (count < N) {
-    for (size_t i = 0; i < M_pop; i++) { pop.at(i).evFit(); }
+    for (size_t i = 0; i < M_pop; i++) { pop.at(i).evFit(); pop.at(i).evPbest(); }
     fout.open("Bitacora.csv",fstream::app);
-    fout << " id " << "," << " Fitness " << ","
-         << " X " << "," << " V " << "," << " Previous best " << endl;
+    fout << " Id " << "," << " Fitness " << "," << " Pbest "           << ","
+         << " X "  << "," << " V "       << "," << " Previous best " << endl;
     fout.close();
-    for (size_t i = 0; i < M_pop; i++) { pop.at(i).log(); }
+    for (size_t i = 0; i < M_pop; i++) { pop.at(i).initPbest(); pop.at(i).log(); }
     sortBuble(M_pop,pop);
     fout.open("Bitacora.csv",fstream::app);
     fout << "..............................................\n";
     fout.close();
     for (size_t i = 0; i < M_pop; i++) { pop.at(i).log(); }
-
-
+    simMov(x_b_g,phi_1,phi_2,rand_coods,pop,M_pop,dimension);
     count++;
   }
 
@@ -82,29 +83,24 @@ int main() {
     for (size_t j = a; j < b; j++) {
       pop.at(j).log();
     }  a = 97; b = 100;
-  }*/
+  }
+  */
 
   return 0;
 }
-void        simMov(vector<Particle>& x_b_g,float& phi_1,float& phi_2,vector<float>& rand_coods,vector<Particle>& pop,unsigned int& M_pop,unsigned int& dimension) {
-  x_b_g.push_back(pop.at(M_pop-1));
-  vector<float> _xbg = x_b_g.at(0).getX();
+void            simMov(vector<Particle>& x_b_g,float& phi_1,float& phi_2,vector<float>& rand_coods,vector<Particle>& pop,unsigned int& M_pop,unsigned int& dimension) {
+  x_b_g.push_back(pop.at(0));
   for (size_t i = 0; i < M_pop; i++) {
-    vector<float> _x = pop.at(i).getX();
-    vector<float> _v = ;
-    vector<float> _xb = pop.at(i).getXB();
-    vector<float> _v1 = product(resta(_xbg,_x),randGen(dimension,phi_2,zero,rand_coods));
-    vector<float> _v2 = product(resta(_xb,_x),randGen(dimension,phi_1,zero,rand_coods));
-    vector<float> _v3 = suma(_v1,_v2);
-    vector<float> _nv = suma(_v,_v3);
-    vector<float> _nx = suma(_x,_v);
-    pop.at(i).setX(_x); pop.at(i).setV(_v); pop.at(i).setXB(_xb);
-
-    pop.at(i).setV(suma(pop.at(i).getV(),));
+    pop.at(i).setV(suma(suma(pop.at(i).getV(),
+    product(resta(pop.at(i).getXB(),pop.at(i).getX()),randGen(dimension,phi_1,zero,rand_coods))),
+    product(resta(x_b_g.at(0).getX(),pop.at(i).getX()),randGen(dimension,phi_2,zero,rand_coods))));
+    pop.at(i).setX(suma(pop.at(i).getX(),pop.at(i).getV()));
   }
 }
-void          Particle::evFit() { m_fitness = sphere(m_x); }
-void          initSwarm(unsigned int& M_pop,unsigned int& dimension,float& min,float& max,vector<float>& rand_coods,vector<Particle>& pop){
+void            Particle::evFit() { m_fitness = sphere(m_x); }
+void            Particle::evPbest() { if (m_fitness < m_pbest) { m_pbest = m_fitness; m_x_b = m_x; } }
+void            Particle::initPbest() { if (m_pbest == 0.0) { m_pbest = m_fitness; } }
+void            initSwarm(unsigned int& M_pop,unsigned int& dimension,float& min,float& max,vector<float>& rand_coods,vector<Particle>& pop){
   srand((unsigned)time(NULL)); //dont run for every random
   for (size_t i = 0; i < M_pop; i++) {//
     randGen(dimension,max,min,rand_coods);
@@ -112,16 +108,16 @@ void          initSwarm(unsigned int& M_pop,unsigned int& dimension,float& min,f
     rand_coods.clear();
   }
 }
-void          Particle::log() {
+void            Particle::log() {
   ofstream fout;
   fout.open("Bitacora.csv",fstream::app);
-    fout << m_id << "," << m_fitness << ","
-         << m_x.at(0)    << "," << m_x.at(1)  << ","
-         << m_v.at(0)    << "," << m_v.at(1)  << ","
-         << m_x_b.at(0)   << "," << m_x_b.at(1) << endl;
+    fout << m_id << ","  << m_fitness << ","         << m_pbest << ","
+         << m_x.at(0)    << ","       << m_x.at(1)   << ","
+         << m_v.at(0)    << ","       << m_v.at(1)   << ","
+         << m_x_b.at(0)  << ","       << m_x_b.at(1) << endl;
   fout.close();
 }
-void          sortBuble(unsigned int& M_pop,vector<Particle>& pop){
+void            sortBuble(unsigned int& M_pop,vector<Particle>& pop){
   bool swapped;
   for (size_t i = 0; i < M_pop-1; i++) {
     swapped = false;
@@ -135,14 +131,14 @@ void          sortBuble(unsigned int& M_pop,vector<Particle>& pop){
       break;
   }
 }
-float         sphere(vector<float>& x){
+float           sphere(vector<float>& x){
   float Temp = 0;
   for (size_t i = 0; i < x.size(); i++)
     Temp += pow(x.at(i), 2.0);
 
   return Temp;
 }
-vector<float> suma(vector<float>& u, vector<float>& v){
+vector<float>   suma(const vector<float>& u,const vector<float>& v){
   vector <float> sum;
   if (u.size() < v.size()){
     for (unsigned int i = 0; i < u.size() ; i++)
@@ -162,7 +158,7 @@ vector<float> suma(vector<float>& u, vector<float>& v){
   }
   return sum;
 }
-vector<float> resta(vector<float>& u, vector<float>& v){
+vector<float>   resta(const vector<float>& u,const vector<float>& v){
   vector <float> subs;
   if (u.size() < v.size()){
     for (unsigned int i = 0; i < u.size() ; i++)
@@ -182,12 +178,12 @@ vector<float> resta(vector<float>& u, vector<float>& v){
   }
   return subs;
 }
-vector<float> product(vector<float>& u, vector<float>& v){
+vector<float>   product(const vector<float>& u,const vector<float>& v){
   vector<float> prods;
   for (size_t i = 0; i < u.size(); i++) { prods.push_back(u.at(i) * v.at(i)); }
   return prods;
 }
-vector<float> randGen(unsigned int& dimension, float& max, float& min,vector<float>& rand_coods) {
+vector<float>   randGen(unsigned int& dimension, float& max, float& min,vector<float>& rand_coods) {
   for (unsigned int j = 0; j < dimension; j++) {
     rand_coods.push_back( min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (max - min))));
   }
