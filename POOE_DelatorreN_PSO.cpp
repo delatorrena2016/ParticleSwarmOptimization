@@ -37,9 +37,11 @@ public:
   void          setV(const vector<float>& _x) { m_v = _x; }
   void          setXB(const vector<float>& _x) { m_x_b = _x; }
   void          log();
+  void          logC();
   void          evFit();
   void          evPbest();
   void          initPbest();
+  void          mirrored();
 };
 
 void            simMov(vector<Particle>& x_b_g,float& phi_1,float& phi_2,vector<float>& rand_coods,
@@ -56,27 +58,34 @@ float           zero = 0.0;
 
 int             main() {
   float            min = -10, max = 10;
-  unsigned int     dimension = 2, M_pop = 10, N=2, count=0;
+  unsigned int     dimension = 2, M_pop = 10, N=45, count=0;
   float            phi_1 = 2.0, phi_2 = 2.0;
   vector<Particle> pop, x_b_g;
   vector<float>    rand_coods;
 
   initSwarm(M_pop,dimension,min,max,rand_coods,pop);
   ofstream         fout;
+  fout.open("Log.csv",fstream::app);
+  fout << "Id" << "," << "Fitness" << "," << "Pbest" << ","
+       << "X"  << "," << "Y" << "," << "V1" << "," << "V2" << "," << "XB" << "," << "YB" << endl;
+  fout.close();
+  fout.open("Convergence.csv",fstream::app);
+  fout << "Id" << "," << "Fitness" << "," << "Pbest" << ","
+       << "X"  << "," << "Y" << "," << "V1" << "," << "V2" << "," << "XB" << "," << "YB" << "," << "It" << endl;
+  fout.close();
   while (count < N) {
     for (size_t i = 0; i < M_pop; i++) { pop.at(i).evFit(); pop.at(i).evPbest(); }
-    fout.open("Bitacora.csv",fstream::app);
-    fout << " Id " << "," << " Fitness " << "," << " Pbest "           << ","
-         << " X "  << "," << " V "       << "," << " Previous best " << endl;
-    fout.close();
-    for (size_t i = 0; i < M_pop; i++) { pop.at(i).initPbest(); pop.at(i).log(); }
+    for (size_t i = 0; i < M_pop; i++) { pop.at(i).initPbest(); /*pop.at(i).log();*/ }
     sortBuble(M_pop,pop);
-    fout.open("Bitacora.csv",fstream::app);
+    /*fout.open("Log.csv",fstream::app);
     fout << "..............................................\n";
-    fout.close();
+    fout.close();*/
     for (size_t i = 0; i < M_pop; i++) { pop.at(i).log(); }
     simMov(x_b_g,phi_1,phi_2,rand_coods,pop,M_pop,dimension);
+    for (size_t i = 0; i < M_pop; i++) { pop.at(i).mirrored(); }
+    x_b_g.at(count).logC();
     count++;
+    fout.open("Convergence.csv",fstream::app); fout << count << endl; fout.close();
   }
 
   /*for (size_t i = 0; i < 2; i++) {
@@ -97,6 +106,12 @@ void            simMov(vector<Particle>& x_b_g,float& phi_1,float& phi_2,vector<
     pop.at(i).setX(suma(pop.at(i).getX(),pop.at(i).getV()));
   }
 }
+void            Particle::mirrored() {
+  for (unsigned int i = 0; i < m_x.size(); i++) {
+    if (m_x.at(i) > 10.0) { m_x.at(i) = (10.0 - abs(m_x.at(i) - 10.0)); }
+    else if (m_x.at(i) < -10.0) { m_x.at(i) = (-10.0 + abs(m_x.at(i) - (-10.0))); }
+  }
+}
 void            Particle::evFit() { m_fitness = sphere(m_x); }
 void            Particle::evPbest() { if (m_fitness < m_pbest) { m_pbest = m_fitness; m_x_b = m_x; } }
 void            Particle::initPbest() { if (m_pbest == 0.0) { m_pbest = m_fitness; } }
@@ -110,11 +125,20 @@ void            initSwarm(unsigned int& M_pop,unsigned int& dimension,float& min
 }
 void            Particle::log() {
   ofstream fout;
-  fout.open("Bitacora.csv",fstream::app);
+  fout.open("Log.csv",fstream::app);
     fout << m_id << ","  << m_fitness << ","         << m_pbest << ","
          << m_x.at(0)    << ","       << m_x.at(1)   << ","
          << m_v.at(0)    << ","       << m_v.at(1)   << ","
          << m_x_b.at(0)  << ","       << m_x_b.at(1) << endl;
+  fout.close();
+}
+void            Particle::logC() {
+  ofstream fout;
+  fout.open("Convergence.csv",fstream::app);
+    fout << m_id << ","  << m_fitness << ","         << m_pbest << ","
+         << m_x.at(0)    << ","       << m_x.at(1)   << ","
+         << m_v.at(0)    << ","       << m_v.at(1)   << ","
+         << m_x_b.at(0)  << ","       << m_x_b.at(1) << ",";
   fout.close();
 }
 void            sortBuble(unsigned int& M_pop,vector<Particle>& pop){
